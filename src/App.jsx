@@ -1,122 +1,76 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Component } from 'react'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { AppProvider, useApp } from './state'
+import { HOME } from './roles'
+import Protected from './components/Protected'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import GetSupport from './pages/student/GetSupport'
+import PeerTalk from './pages/student/PeerTalk'
+import Assessment from './pages/student/Assessment'
+import Appointment from './pages/student/Appointment'
+import SelectDate from './pages/student/SelectDate'
+import Review from './pages/student/Review'
+import Appointments from './pages/student/Appointments'
+import Inbox from './pages/student/Inbox'
+import Profile from './pages/student/Profile'
+import Talks from './pages/kaabag/Talks'
+import CounselorAppointments from './pages/counselor/Appointments'
+import Accounts from './pages/associate/Accounts'
+import Availability from './pages/associate/Availability'
+import AssociateAppointments from './pages/associate/Appointments'
+import FollowUps from './pages/associate/FollowUps'
+import Reports from './pages/associate/Reports'
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// Shows a friendly message if a page crashes, instead of a blank screen.
+class ErrorBoundary extends Component {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() {
+    if (!this.state.failed) return this.props.children
+    return <main className="center-page"><h1>Something went wrong</h1><p>Please reload the page. If it keeps happening, sign out and sign in again.</p><button className="btn" onClick={() => window.location.assign('/')}>Reload</button></main>
+  }
 }
 
-export default App
+function Home() {
+  const { user } = useApp()
+  return <Navigate to={user ? HOME[user.role] : '/login'} replace />
+}
+function NotFound() {
+  return <main className="center-page"><h1>Page not found</h1><p>This page does not exist.</p><Link className="btn" to="/">Go to the start</Link></main>
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/student" element={<Protected role="student"><Dashboard role="student" /></Protected>} />
+          <Route path="/student/support" element={<Protected role="student"><GetSupport /></Protected>} />
+          <Route path="/student/peer" element={<Protected role="student"><PeerTalk /></Protected>} />
+          <Route path="/student/assessment" element={<Protected role="student"><Assessment /></Protected>} />
+          <Route path="/student/appointment" element={<Protected role="student"><Appointment /></Protected>} />
+          <Route path="/student/select-date" element={<Protected role="student"><SelectDate /></Protected>} />
+          <Route path="/student/review" element={<Protected role="student"><Review /></Protected>} />
+          <Route path="/student/appointments" element={<Protected role="student"><Appointments /></Protected>} />
+          <Route path="/student/appointments/:id" element={<Protected role="student"><Appointments /></Protected>} />
+          <Route path="/student/inbox" element={<Protected role="student"><Inbox /></Protected>} />
+          <Route path="/student/profile" element={<Protected role="student"><Profile /></Protected>} />
+          <Route path="/kaabag" element={<Protected role="kaabag"><Dashboard role="kaabag" /></Protected>} />
+          <Route path="/kaabag/talks" element={<Protected role="kaabag"><Talks /></Protected>} />
+          <Route path="/counselor" element={<Protected role="counselor"><Dashboard role="counselor" /></Protected>} />
+          <Route path="/counselor/appointments" element={<Protected role="counselor"><CounselorAppointments /></Protected>} />
+          <Route path="/associate" element={<Protected role="associate"><Dashboard role="associate" /></Protected>} />
+          <Route path="/associate/accounts" element={<Protected role="associate"><Accounts /></Protected>} />
+          <Route path="/associate/availability" element={<Protected role="associate"><Availability /></Protected>} />
+          <Route path="/associate/appointments" element={<Protected role="associate"><AssociateAppointments /></Protected>} />
+          <Route path="/associate/followups" element={<Protected role="associate"><FollowUps /></Protected>} />
+          <Route path="/associate/reports" element={<Protected role="associate"><Reports /></Protected>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AppProvider>
+    </ErrorBoundary>
+  )
+}
