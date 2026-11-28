@@ -77,7 +77,7 @@ export default function Outcome() {
             </Field>
             <Field id="fu" label="Follow-up session (optional)" error={errors.date} hint={`Only ${noYear(min)} – ${fmtShort(max)} can be chosen (within five days after the session).`}>
               <div className="row" style={{ flexWrap: 'nowrap' }}>
-                <input id="fu" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <input id="fu" className="input" type="date" min={min} max={max} value={date} onChange={(e) => setDate(e.target.value)} />
                 <input aria-label="Follow-up time" className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ maxWidth: 140 }} />
               </div>
             </Field>
