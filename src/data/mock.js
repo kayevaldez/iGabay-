@@ -1,67 +1,77 @@
-// Sample data that follows the iGabay SRS (Section 5, Chapter 5 data dictionary).
+// Sample data that follows the iGabay SRS (data dictionary) and the Figma screens.
 // All names, numbers and dates below are sample values. Edit them here.
 export const DEMO_PASSWORD = 'igabay123'
 export const DOMAIN = '@msunaawan.edu.ph'
+export const COUNSELOR_ID = 5
 
 export const users = [
-  { id: 1, email: 'faithalexa.jabien' + DOMAIN, firstName: 'Faith Alexa', lastName: 'Jabien', contactNumber: '0917 000 0001', role: 'student', status: 'active', createdAt: '2026-10-05' },
-  { id: 2, email: 'student.b' + DOMAIN, firstName: 'Student', lastName: 'B', contactNumber: '0917 000 0002', role: 'student', status: 'active', createdAt: '2026-10-05' },
-  { id: 3, email: 'student.c' + DOMAIN, firstName: 'Student', lastName: 'C', contactNumber: '0917 000 0003', role: 'student', status: 'active', createdAt: '2026-10-06' },
-  { id: 4, email: 'student.d' + DOMAIN, firstName: 'Student', lastName: 'D', contactNumber: '0917 000 0004', role: 'student', status: 'inactive', createdAt: '2026-10-06' },
-  { id: 5, email: 'kaye.valdez' + DOMAIN, firstName: 'Kaye', lastName: 'Valdez', contactNumber: '0917 000 0005', role: 'counselor', status: 'active', createdAt: '2026-09-20' },
-  { id: 6, email: 'sam.dadole' + DOMAIN, firstName: 'Sam', lastName: 'Dadole', contactNumber: '0917 000 0006', role: 'associate', status: 'active', createdAt: '2026-09-20' },
-  { id: 7, email: 'kaabag.sample' + DOMAIN, firstName: 'Sample', lastName: 'Kaabag', contactNumber: '0917 000 0007', role: 'kaabag', status: 'active', createdAt: '2026-09-22' },
+  { id: 1, email: 'alexa.jabien' + DOMAIN, firstName: 'Alexa', lastName: 'Jabien', contactNumber: '09170000001', role: 'student', status: 'active', createdAt: '2026-10-05' },
+  { id: 2, email: 'student.b@gmail.com', firstName: 'Student', lastName: 'B', contactNumber: '09170000002', role: 'student', status: 'active', createdAt: '2026-10-05' },
+  { id: 3, email: 'student.c' + DOMAIN, firstName: 'Student', lastName: 'C', contactNumber: '09170000003', role: 'student', status: 'active', createdAt: '2026-10-06' },
+  { id: 4, email: 'student.d' + DOMAIN, firstName: 'Student', lastName: 'D', contactNumber: '', role: 'student', status: 'inactive', createdAt: '2026-10-06' },
+  { id: 5, email: 'miko.omondang' + DOMAIN, firstName: 'Miko Neco B.', lastName: 'Omondang', contactNumber: '09170000005', role: 'counselor', status: 'active', createdAt: '2026-09-20' },
+  { id: 6, email: 'sam.dadole' + DOMAIN, firstName: 'Sam', lastName: 'Dadole', contactNumber: '09170000006', role: 'associate', status: 'active', createdAt: '2026-09-20' },
+  { id: 7, email: 'kaabag' + DOMAIN, firstName: 'Kaabag', lastName: '', contactNumber: '09170000007', role: 'kaabag', status: 'active', createdAt: '2026-09-22' },
+  { id: 8, email: 'kaabag.b' + DOMAIN, firstName: 'Sample', lastName: 'Kaabag', contactNumber: '', role: 'kaabag', status: 'inactive', createdAt: '2026-09-22' },
 ]
 
+// sex and year level are only used for students (Reports)
 export const studentProfiles = {
-  1: { studentNumber: '2023-00001', program: 'BS Information Technology', yearLevel: '3rd year' },
-  2: { studentNumber: '2023-00002', program: 'BS Information Technology', yearLevel: '3rd year' },
-  3: { studentNumber: '2024-00003', program: 'BS Information Technology', yearLevel: '2nd year' },
-  4: { studentNumber: '2022-00004', program: 'BS Information Technology', yearLevel: '4th year' },
+  1: { sex: 'Female', yearLevel: '3rd year' },
+  2: { sex: 'Male', yearLevel: '2nd year' },
+  3: { sex: 'Female', yearLevel: '1st year' },
+  4: { sex: 'Male', yearLevel: '4th year' },
 }
 
-const TIMES = [['10:00', '11:00'], ['11:00', '12:00'], ['14:00', '15:00']]
+// Open times from the Figma availability grid. 4:00 PM is unavailable.
+export const TIMES = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']
+const pad = (n) => String(n).padStart(2, '0')
+const hourAfter = (t) => `${pad(Number(t.slice(0, 2)) + 1)}:00`
 function buildSlots() {
   const out = []
   for (let d = new Date(2026, 10, 2); d <= new Date(2026, 11, 31); d.setDate(d.getDate() + 1)) {
-    if (![1, 3, 5].includes(d.getDay())) continue // Mon, Wed, Fri
-    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    for (const [start, end] of TIMES) out.push({ id: `s-${date}-${start}`, counselorId: 5, date, start, end, status: 'open' })
+    if (d.getDay() === 0 || d.getDay() === 6) continue // Monday to Friday
+    const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    for (const start of TIMES) {
+      out.push({ id: `s-${date}-${start}`, counselorId: COUNSELOR_ID, date, start, end: hourAfter(start), status: start === '16:00' ? 'unavailable' : 'open' })
+    }
   }
   return out
 }
 export const slots = buildSlots()
 
-export const appointments = [
-  { id: 1, studentId: 1, counselorId: 5, slotId: 's-2026-12-16-10:00', remarks: 'Sample note from the appointment form.', status: 'scheduled', cancelReason: '', createdAt: '2026-11-20' },
-  { id: 2, studentId: 2, counselorId: 5, slotId: 's-2026-12-16-11:00', remarks: '', status: 'scheduled', cancelReason: '', createdAt: '2026-11-21' },
-  { id: 3, studentId: 2, counselorId: 5, slotId: 's-2026-11-04-14:00', remarks: '', status: 'completed', cancelReason: '', createdAt: '2026-11-01' },
-  { id: 4, studentId: 1, counselorId: 5, slotId: 's-2026-11-09-11:00', remarks: '', status: 'cancelled', cancelReason: '', createdAt: '2026-11-03' },
-  { id: 5, studentId: 2, counselorId: 5, slotId: 's-2026-11-11-10:00', remarks: '', status: 'counselor absent', cancelReason: 'The counselor is attending an official university commitment.', createdAt: '2026-11-05' },
+// Slots already taken. The first four belong to the appointments below; the rest are sample bookings by other students.
+export const bookedSlotIds = [
+  's-2026-12-08-10:00', 's-2026-12-09-10:00', 's-2026-11-04-14:00', 's-2026-11-11-10:00',
+  's-2026-12-08-11:00', 's-2026-12-08-14:00',
 ]
-// slots used by appointments that are still holding the slot
-export const bookedSlotIds = ['s-2026-12-16-10:00', 's-2026-12-16-11:00', 's-2026-11-04-14:00']
+export const fullyBookedDates = ['2026-12-03', '2026-12-17']
 
-export const assessments = { 1: { answers: ['Sample answer'], submittedAt: '2026-11-20' }, 2: { answers: ['Sample answer'], submittedAt: '2026-11-01' } }
+export const appointments = [
+  { id: 1, studentId: 1, counselorId: COUNSELOR_ID, slotId: 's-2026-12-08-10:00', status: 'booked', cancelReason: '', createdAt: '2026-11-20' },
+  { id: 2, studentId: 2, counselorId: COUNSELOR_ID, slotId: 's-2026-12-09-10:00', status: 'rescheduled', cancelReason: '', createdAt: '2026-11-21' },
+  { id: 3, studentId: 2, counselorId: COUNSELOR_ID, slotId: 's-2026-11-04-14:00', status: 'completed', cancelReason: '', createdAt: '2026-11-01' },
+  { id: 4, studentId: 4, counselorId: COUNSELOR_ID, slotId: 's-2026-11-11-10:00', status: 'no-show', cancelReason: '', createdAt: '2026-11-05' },
+  { id: 5, studentId: 2, counselorId: COUNSELOR_ID, slotId: 's-2026-11-09-11:00', status: 'cancelled', cancelReason: '', createdAt: '2026-11-03' },
+]
+
+// Assessment answers: three 1 to 5 scores and one main concern (index 0 to 4)
+export const assessments = {
+  1: { scores: [3, 4, 2], concern: 0, submittedAt: '2026-11-20' },
+  2: { scores: [2, 3, 3], concern: 1, submittedAt: '2026-11-01' },
+}
 
 export const caseRecords = [
   { id: 1, appointmentId: 3, outcomeNotes: 'Sample outcome: the session was completed and a follow-up was needed.', followUpNeeded: true, sessionStatus: 'follow-up', recordedAt: '2026-11-04' },
+  { id: 2, appointmentId: 4, outcomeNotes: 'Sample note: the student did not come.', followUpNeeded: true, sessionStatus: 'follow-up', recordedAt: '2026-11-11' },
 ]
+// Students who did not come to the follow-up (shown after five days without a visit)
 export const followUps = [
-  { id: 1, caseRecordId: 1, studentId: 2, followUpDate: '2026-11-09', status: 'missed', contactedBy: null, contactedVia: null, contactedAt: null },
+  { id: 1, caseRecordId: 1, studentId: 2, sessionDate: '2026-11-04', followUpDate: '2026-11-09', status: 'missed' },
+  { id: 2, caseRecordId: 2, studentId: 4, sessionDate: '2026-11-11', followUpDate: '2026-11-16', status: 'missed' },
 ]
 
-export const peerTalks = [
-  {
-    id: 1, studentId: 2, kaabagId: 7, status: 'ongoing', asked: false, wantsCounseling: null,
-    messages: [
-      { id: 1, from: 'student', text: 'Hi, I need someone to talk to.', at: '09:12' },
-      { id: 2, from: 'kaabag', text: 'Hi, I am here. Tell me what is on your mind.', at: '09:13' },
-    ],
-  },
-]
-
+export const peerTalks = []
 export const emails = [
-  { id: 1, userId: 1, appointmentId: 1, type: 'appointment details', subject: 'Your iGabay appointment details', body: 'Your counseling appointment is booked. The date, time and counselor are shown below.', sentAt: '2026-11-20', deliveryStatus: 'sent' },
-  { id: 2, userId: 2, appointmentId: 5, type: 'counselor absence', subject: 'Your counselor is unavailable', body: 'The counselor will not attend on the appointment day. Reason: The counselor is attending an official university commitment. You can cancel the appointment or rebook.', sentAt: '2026-11-10', deliveryStatus: 'sent' },
+  { id: 1, userId: 1, appointmentId: 1, type: 'appointment details', subject: 'Your iGabay appointment details', message: '', reason: '', sentAt: '2026-11-20' },
 ]

@@ -1,80 +1,78 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useApp } from '../state'
-import { HOME } from '../roles'
 import { DEMO_PASSWORD, users } from '../data/mock'
-import { validEmail } from '../utils'
+import { HOME } from '../roles'
 import { Field, Notice } from '../components/ui'
+import { validEmail } from '../utils'
 
-// FR-01, FR-02: secure login, then each role opens only its own features
+const TABS = [['student', 'Student'], ['counselor', 'Counselor'], ['associate', 'Associate'], ['kaabag', 'Kaabag']]
+// the sample account that each role button fills in (Figma P01)
+const SAMPLE = { student: users[0].email, counselor: users[4].email, associate: users[5].email, kaabag: users[6].email }
+
 export default function Login() {
   const { user, login, resetDemo } = useApp()
-  const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const go = useNavigate()
+  const [role, setRole] = useState('student')
+  const [email, setEmail] = useState(SAMPLE.student)
+  const [password, setPassword] = useState(DEMO_PASSWORD)
   const [errors, setErrors] = useState({})
-  const [formError, setFormError] = useState('')
+  const [failed, setFailed] = useState(null)
   const [busy, setBusy] = useState(false)
 
   if (user) return <Navigate to={HOME[user.role]} replace />
 
-  function submit(e) {
+  const pick = (r) => { setRole(r); setEmail(SAMPLE[r]); setPassword(DEMO_PASSWORD); setErrors({}); setFailed(null) }
+  const submit = (e) => {
     e.preventDefault()
     const next = {}
-    if (!email.trim()) next.email = 'Enter your institutional email.'
-    else if (!validEmail(email.trim())) next.email = 'Enter a valid email, like name@msunaawan.edu.ph.'
+    if (!email.trim()) next.email = 'Enter your email address.'
+    else if (!validEmail(email.trim())) next.email = 'Enter a valid email address.'
     if (!password) next.password = 'Enter your password.'
-    setErrors(next)
-    setFormError('')
+    setErrors(next); setFailed(null)
     if (Object.keys(next).length) return
     setBusy(true)
-    setTimeout(() => { // pretend the request takes a moment
-      try {
-        const res = login(email, password)
-        setBusy(false)
-        if (!res.ok) return setFormError(res.error)
-        navigate(HOME[res.user.role], { replace: true })
-      } catch {
-        setBusy(false)
-        setFormError('Something went wrong. Please try again.')
-      }
-    }, 500)
+    // short pause, like a real sign in request
+    setTimeout(() => {
+      const r = login(email, password, role)
+      setBusy(false)
+      if (r.ok) go(HOME[r.user.role], { replace: true })
+      else setFailed(r)
+    }, 350)
   }
 
   return (
     <div className="login">
-      <section className="login-form">
-        <div className="brand"><span className="logo" aria-hidden="true">i</span><span>iGabay</span></div>
-        <h1>Welcome to iGabay</h1>
-        <p className="lead">Sign in with the account provided for your university role.</p>
-        <form onSubmit={submit} noValidate>
-          <Field label="Email" id="email" error={errors.email}>
-            <input id="email" type="email" autoComplete="username" placeholder="Enter your account identifier" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </Field>
-          <Field label="Password" id="password" error={errors.password}>
-            <input id="password" type="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </Field>
-          {formError && <Notice kind="error" title="Could not sign in">{formError}</Notice>}
-          <button className="btn" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        </form>
-        <Notice title="Secure, role-based access">Your account opens only the features of your role: Student, Guidance Associate, Guidance Counselor, or Kaabag.</Notice>
-        <Notice kind="warn" title="Not suitable for emergencies">Contact the Guidance office or emergency services directly if you need urgent help.</Notice>
-        <details className="demo">
-          <summary>Sample accounts for this demo</summary>
-          <p>Password for all: <code>{DEMO_PASSWORD}</code></p>
-          <ul>
-            {users.map((u) => (
-              <li key={u.id}><button type="button" className="link-btn" onClick={() => { setEmail(u.email); setPassword(DEMO_PASSWORD) }}>{u.email}</button> <small>({u.role}{u.status === 'inactive' ? ', inactive' : ''})</small></li>
-            ))}
-          </ul>
-          <button type="button" className="link-btn" onClick={resetDemo}>Reset sample data</button>
-        </details>
+      <section className="login-art">
+        <div>
+          <div className="brand">iGabay</div>
+          <p className="org">MSU Naawan<br />Office of Guidance, Counseling<br />and Career Services</p>
+        </div>
+        <div>
+          <h2>You don't have to figure it out alone.</h2>
+          <p>A private space to take your next step. Connect with a counselor or talk with a peer, at a pace that feels right for you.</p>
+        </div>
+        <span className="spacer" />
       </section>
-      <section className="login-art" aria-hidden="true">
-        <h2>A quieter first step. A place for support.</h2>
-        <p>Request counseling discreetly, or connect with a Kaabag. Take your next step at your own pace.</p>
-        <small>Office of Guidance, Counseling, and Career Services (OGCCS) under the Office of Student Welfare, MSU Naawan</small>
-      </section>
+      <form className="login-form" onSubmit={submit} noValidate>
+        <p className="eyebrow" style={{ margin: 0 }}>Welcome to iGabay</p>
+        <h1>A small step starts here.</h1>
+        <p className="help" style={{ marginTop: 0 }}>Sign in using the account provided by your guidance office.</p>
+        <div className="tabs" role="group" aria-label="Role">
+          {TABS.map(([key, label]) => <button key={key} type="button" className={`tab${role === key ? ' on' : ''}`} aria-pressed={role === key} onClick={() => pick(key)}>{label}</button>)}
+        </div>
+        <Field id="email" label="Email address" error={errors.email}>
+          <input id="email" className="input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </Field>
+        <Field id="password" label="Password" error={errors.password}>
+          <input id="password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        {failed && <Notice title={failed.error}>{failed.detail || 'Check your details and try again.'}</Notice>}
+        <button className="btn" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        <p className="help">Need help signing in? Contact the guidance office.</p>
+        <Notice title="Not suitable for emergencies">Contact the guidance office or emergency services directly for urgent help.</Notice>
+        <button type="button" className="link" style={{ alignSelf: 'flex-start' }} onClick={() => { resetDemo(); pick(role) }}>Reset sample data</button>
+      </form>
     </div>
   )
 }

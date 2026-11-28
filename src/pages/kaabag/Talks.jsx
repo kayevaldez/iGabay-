@@ -1,52 +1,76 @@
-import { useState } from 'react'
-import Shell from '../../components/Shell'
-import { EmptyState, Loading, Notice, StatusBadge } from '../../components/ui'
-import { useLoading } from '../../useLoading'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../state'
-import { fullName } from '../../utils'
+import Shell from '../../components/Shell'
+import Icon from '../../components/Icon'
+import { EmptyState } from '../../components/ui'
+import { fullName, initials } from '../../utils'
 
-// FR-06 to FR-09 (Kaabag side)
+const EMERGENCY = <><b>Not suitable for emergencies</b> — Contact the guidance office or emergency services directly for urgent help.</>
+
+// Kaabag screens: empty list (K00), chat with a student (K01), conversation ended (K04)
 export default function Talks() {
-  const { db, user, byId, sendMessage, askCounseling, endTalk } = useApp()
-  const loading = useLoading()
-  const talks = db.peerTalks.filter((t) => t.kaabagId === user.id)
-  const [openId, setOpenId] = useState(null)
+  const { db, user, byId, sendMessage, askCounseling, endTalk, reconnectTalk } = useApp()
+  const [picked, setPicked] = useState(null)
   const [text, setText] = useState('')
-  const talk = talks.find((t) => t.id === openId) || talks[0]
+  const endRef = useRef(null)
+  const talks = db.peerTalks.filter((t) => t.kaabagId === user.id).sort((a, b) => (a.status === b.status ? b.id - a.id : a.status === 'ongoing' ? -1 : 1))
+  const talk = talks.find((t) => t.id === picked) || talks[0]
+  const count = talk ? talk.messages.length : 0
+  const talkId = talk ? talk.id : null
+  useEffect(() => { if (endRef.current) endRef.current.scrollTop = endRef.current.scrollHeight }, [count, talkId])
 
-  function send(e) {
-    e.preventDefault()
-    if (!text.trim()) return
-    sendMessage(talk.id, 'kaabag', text.trim())
-    setText('')
-  }
-  return (
-    <Shell role="kaabag" eyebrow="KAABAG / PEER TALKS" title="One-on-one peer talk" subtitle="Students are handed to you by the chatbot. Talk with them here.">
-      {loading ? <Loading /> : talks.length === 0 ? <EmptyState title="No students are handed over yet">When a student chooses Peer talk, the conversation shows here.</EmptyState> : (
-        <div className="two-col wide-right">
-          <ul className="card mail-list" aria-label="Conversations">
-            {talks.map((t) => <li key={t.id}><button className={`mail-item${talk.id === t.id ? ' active' : ''}`} onClick={() => setOpenId(t.id)}><strong>{fullName(byId(t.studentId))}</strong><small>{t.status}</small></button></li>)}
-          </ul>
-          <section className="card chat">
-            <header className="chat-head"><div><strong>{fullName(byId(talk.studentId))}</strong><small>Peer talk</small></div><StatusBadge status={talk.status === 'ongoing' ? 'active' : 'inactive'} /></header>
-            <div className="chat-body">
-              {talk.messages.length === 0 && <EmptyState title="No messages yet">Send the first message.</EmptyState>}
-              {talk.messages.map((m) => <div key={m.id} className={`bubble ${m.from === 'kaabag' ? 'you' : 'bot'}`}><small>{m.from === 'kaabag' ? 'You' : 'Student'} · {m.at}</small><p>{m.text}</p></div>)}
-            </div>
-            {talk.status === 'ongoing' ? (
-              <>
-                <form className="composer" onSubmit={send}><label className="sr" htmlFor="m">Message</label><input id="m" value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a message" /><button className="btn" type="submit" disabled={!text.trim()}>Send</button></form>
-                <div className="row pad">
-                  <button className="btn btn-ghost" disabled={talk.asked} onClick={() => askCounseling(talk.id)}>Ask: Do you want counseling?</button>
-                  <button className="btn" disabled={talk.wantsCounseling !== false} onClick={() => endTalk(talk.id)}>End conversation</button>
-                </div>
-                {talk.asked && talk.wantsCounseling === null && <Notice title="Waiting for the student’s answer" />}
-                {talk.wantsCounseling === false && <Notice title="The student does not want counseling">You can end the conversation. No booking is started.</Notice>}
-              </>
-            ) : <Notice title="Conversation ended">{talk.wantsCounseling ? 'The student wants counseling and was reconnected to the chatbot to book.' : 'The conversation is closed.'}</Notice>}
-          </section>
+  if (!talk) {
+    return (
+      <Shell role="kaabag">
+        <div className="page">
+          <div><p className="eyebrow">Peer talks</p><h1>Handed-over chats</h1></div>
+          <EmptyState icon="chat" title="No peer talks right now">When a student chooses Peer talk, the chat will show here.</EmptyState>
         </div>
-      )}
+      </Shell>
+    )
+  }
+  const student = byId(talk.studentId)
+  const ongoing = talk.status === 'ongoing'
+  const send = (e) => { e.preventDefault(); if (!text.trim() || !ongoing) return; sendMessage(talk.id, 'kaabag', text.trim()); setText('') }
+
+  return (
+    <Shell role="kaabag" bare>
+      <div className="chat">
+        <aside className="chat-list" aria-label="Peer talks">
+          <h2>Peer talks</h2>
+          {talks.map((t) => (
+            <button key={t.id} className={`chat-item${t.id === talk.id ? ' on' : ''}`} onClick={() => setPicked(t.id)}>
+              <span className="avatar grey">{initials(byId(t.studentId))}</span>
+              <span><b>{fullName(byId(t.studentId))}</b><small>{t.status === 'ongoing' ? 'Handed over by the chatbot' : 'Conversation ended'}</small></span>
+            </button>
+          ))}
+        </aside>
+        <section className="chat-pane" aria-label="Conversation">
+          <div className="chat-head">
+            <span className="avatar grey">{initials(student)}</span>
+            <div><b>{fullName(student)}</b><small className="muted">Student</small></div>
+            {ongoing && (
+              <div className="actions">
+                <button className="btn btn-outline" onClick={() => askCounseling(talk.id)}>Ask about counseling</button>
+                <button className="btn btn-outline" onClick={() => endTalk(talk.id)}>End conversation</button>
+                <button className="btn" onClick={() => reconnectTalk(talk.id)}>Reconnect to chatbot to book</button>
+              </div>
+            )}
+          </div>
+          <div className="emerg">{EMERGENCY}</div>
+          <div className="msgs" ref={endRef} aria-live="polite">
+            {talk.messages.map((m) => m.from === 'system'
+              ? <div className="sys" key={m.id}>{m.kaabag}</div>
+              : m.from === 'kaabag'
+                ? <div className="m me" key={m.id}><div className="col"><div className="bub me">{m.text}</div></div></div>
+                : <div className="m" key={m.id}><span className="avatar sm grey" aria-hidden="true">{initials(student)}</span><div className="col"><div className="bub">{m.text}</div></div></div>)}
+          </div>
+          <form className="composer" onSubmit={send}>
+            <input aria-label="Message" placeholder={ongoing ? 'Aa' : 'This conversation has ended'} disabled={!ongoing} value={text} onChange={(e) => setText(e.target.value)} />
+            <button className="send" type="submit" aria-label="Send" disabled={!ongoing || !text.trim()}><Icon name="send" size={16} /></button>
+          </form>
+        </section>
+      </div>
     </Shell>
   )
 }

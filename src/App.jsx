@@ -4,23 +4,22 @@ import { AppProvider, useApp } from './state'
 import { HOME } from './roles'
 import Protected from './components/Protected'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import GetSupport from './pages/student/GetSupport'
-import PeerTalk from './pages/student/PeerTalk'
-import Assessment from './pages/student/Assessment'
-import Appointment from './pages/student/Appointment'
-import SelectDate from './pages/student/SelectDate'
-import Review from './pages/student/Review'
-import Appointments from './pages/student/Appointments'
-import Inbox from './pages/student/Inbox'
-import Profile from './pages/student/Profile'
+import EmailView from './pages/EmailView'
+import StudentHome from './pages/student/Home'
+import Chat from './pages/student/Chat'
+import StudentAppointments from './pages/student/Appointments'
 import Talks from './pages/kaabag/Talks'
 import CounselorAppointments from './pages/counselor/Appointments'
+import Outcome from './pages/counselor/Outcome'
 import Accounts from './pages/associate/Accounts'
+import AccountForm from './pages/associate/AccountForm'
 import Availability from './pages/associate/Availability'
 import AssociateAppointments from './pages/associate/Appointments'
+import AppointmentDetails from './pages/associate/AppointmentDetails'
+import AbsenceEmail from './pages/associate/AbsenceEmail'
 import FollowUps from './pages/associate/FollowUps'
 import Reports from './pages/associate/Reports'
+import WellbeingAnalytics from './pages/associate/WellbeingAnalytics'
 
 // Shows a friendly message if a page crashes, instead of a blank screen.
 class ErrorBoundary extends Component {
@@ -39,6 +38,7 @@ function Home() {
 function NotFound() {
   return <main className="center-page"><h1>Page not found</h1><p>This page does not exist.</p><Link className="btn" to="/">Go to the start</Link></main>
 }
+const P = ({ role, children }) => <Protected role={role}>{children}</Protected>
 
 export default function App() {
   return (
@@ -47,27 +47,30 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/student" element={<Protected role="student"><Dashboard role="student" /></Protected>} />
-          <Route path="/student/support" element={<Protected role="student"><GetSupport /></Protected>} />
-          <Route path="/student/peer" element={<Protected role="student"><PeerTalk /></Protected>} />
-          <Route path="/student/assessment" element={<Protected role="student"><Assessment /></Protected>} />
-          <Route path="/student/appointment" element={<Protected role="student"><Appointment /></Protected>} />
-          <Route path="/student/select-date" element={<Protected role="student"><SelectDate /></Protected>} />
-          <Route path="/student/review" element={<Protected role="student"><Review /></Protected>} />
-          <Route path="/student/appointments" element={<Protected role="student"><Appointments /></Protected>} />
-          <Route path="/student/appointments/:id" element={<Protected role="student"><Appointments /></Protected>} />
-          <Route path="/student/inbox" element={<Protected role="student"><Inbox /></Protected>} />
-          <Route path="/student/profile" element={<Protected role="student"><Profile /></Protected>} />
-          <Route path="/kaabag" element={<Protected role="kaabag"><Dashboard role="kaabag" /></Protected>} />
-          <Route path="/kaabag/talks" element={<Protected role="kaabag"><Talks /></Protected>} />
-          <Route path="/counselor" element={<Protected role="counselor"><Dashboard role="counselor" /></Protected>} />
-          <Route path="/counselor/appointments" element={<Protected role="counselor"><CounselorAppointments /></Protected>} />
-          <Route path="/associate" element={<Protected role="associate"><Dashboard role="associate" /></Protected>} />
-          <Route path="/associate/accounts" element={<Protected role="associate"><Accounts /></Protected>} />
-          <Route path="/associate/availability" element={<Protected role="associate"><Availability /></Protected>} />
-          <Route path="/associate/appointments" element={<Protected role="associate"><AssociateAppointments /></Protected>} />
-          <Route path="/associate/followups" element={<Protected role="associate"><FollowUps /></Protected>} />
-          <Route path="/associate/reports" element={<Protected role="associate"><Reports /></Protected>} />
+          <Route path="/email/:id" element={<P role={['student', 'associate']}><EmailView /></P>} />
+
+          <Route path="/student" element={<P role="student"><StudentHome /></P>} />
+          <Route path="/student/chat" element={<P role="student"><Chat /></P>} />
+          <Route path="/student/appointments" element={<P role="student"><StudentAppointments /></P>} />
+          <Route path="/student/appointments/cancelled/:id" element={<P role="student"><StudentAppointments /></P>} />
+
+          <Route path="/kaabag" element={<P role="kaabag"><Talks /></P>} />
+
+          <Route path="/counselor" element={<P role="counselor"><CounselorAppointments /></P>} />
+          <Route path="/counselor/appointments/:id" element={<P role="counselor"><Outcome /></P>} />
+
+          <Route path="/associate" element={<P role="associate"><AssociateAppointments /></P>} />
+          <Route path="/associate/appointments/:id" element={<P role="associate"><AppointmentDetails /></P>} />
+          <Route path="/associate/appointments/:id/absence" element={<P role="associate"><AbsenceEmail /></P>} />
+          <Route path="/associate/appointments/:id/sent" element={<P role="associate"><AbsenceEmail sent /></P>} />
+          <Route path="/associate/accounts" element={<P role="associate"><Accounts /></P>} />
+          <Route path="/associate/accounts/saved" element={<P role="associate"><Accounts saved /></P>} />
+          <Route path="/associate/accounts/new" element={<P role="associate"><AccountForm /></P>} />
+          <Route path="/associate/accounts/:id/edit" element={<P role="associate"><AccountForm /></P>} />
+          <Route path="/associate/availability" element={<P role="associate"><Availability /></P>} />
+          <Route path="/associate/followups" element={<P role="associate"><FollowUps /></P>} />
+          <Route path="/associate/reports" element={<P role="associate"><Reports /></P>} />
+          <Route path="/associate/reports/wellbeing" element={<P role="associate"><WellbeingAnalytics /></P>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppProvider>
