@@ -66,7 +66,7 @@ export default function Chat() {
   const oldSlot = rebook ? slotById(rebook.slotId) : null
 
   const talkCount = talk ? talk.messages.length : 0
-  useEffect(() => { if (endRef.current) endRef.current.scrollTop = endRef.current.scrollHeight }, [log.length, talkCount])
+  useEffect(() => { if (endRef.current) endRef.current.scrollTop = endRef.current.scrollHeight }, [log.length, talkCount, view])
 
   const press = (key) => (key === 'book' ? chooseBook(user.id) : choosePeer(user.id))
   const last = log[log.length - 1]
@@ -79,9 +79,10 @@ export default function Chat() {
   const waiting = ongoing && talk.messages.filter((m) => m.from !== 'system').slice(-1)[0]
   const asked = ongoing && waiting && waiting.from === 'kaabag' && waiting.text === 'Do you want counseling?'
 
+  const canType = ongoing && view === 'kaabag'
   const send = (msg) => {
     const t = (msg ?? text).trim()
-    if (!t || !ongoing) return
+    if (!t || !canType) return
     sendMessage(talk.id, 'student', t); setText('')
   }
   const card = (it) => {
@@ -120,15 +121,15 @@ export default function Chat() {
     else if (it.kind === 'me') items.push(<div className="m me" key={`m${it.id}`}><div className="col"><div className="bub me">{it.text}</div>{it.seen && <span className="seen">Seen</span>}</div></div>)
     else if (it.kind === 'buttons') items.push(bot(`o${it.id}`, <div className="opts">{it.options.map((k) => <button key={k} className="opt" disabled={it.used} onClick={() => press(k)}>{BUTTON_TEXT[k]}</button>)}</div>, first))
     else if (it.kind === 'card') items.push(bot(`c${it.id}`, card(it), first))
-    else if (it.kind === 'talk') {
-      const t = db.peerTalks.find((x) => x.id === it.talkId)
-      t.messages.forEach((m) => {
-        const key = `t${t.id}-${m.id}`
-        if (m.from === 'system') items.push(<div className="sys" key={key}>{m.student}</div>)
-        else if (m.from === 'kaabag') items.push(<div className="m" key={key}><span className="avatar sm brown" aria-hidden="true">K</span><div className="col"><span className="who">Kaabag</span><div className="bub kaabag">{m.text}</div></div></div>)
-        else items.push(<div className="m me" key={key}><div className="col"><div className="bub me">{m.text}</div></div></div>)
-      })
-    }
+  })
+  const talkItems = []
+  db.peerTalks.filter((t) => t.studentId === user.id).forEach((t) => {
+    t.messages.forEach((m) => {
+      const key = `t${t.id}-${m.id}`
+      if (m.from === 'system') talkItems.push(<div className="sys" key={key}>{m.student}</div>)
+      else if (m.from === 'kaabag') talkItems.push(<div className="m" key={key}><span className="avatar sm brown" aria-hidden="true">K</span><div className="col"><span className="who">Kaabag</span><div className="bub kaabag">{m.text}</div></div></div>)
+      else talkItems.push(<div className="m me" key={key}><div className="col"><div className="bub me">{m.text}</div></div></div>)
+    })
   })
   if (resume) items.push(bot('resume', <div className="opts"><button className="opt" onClick={() => setStep(resume)}>Continue</button></div>))
 
@@ -163,13 +164,13 @@ export default function Chat() {
             <div><b>{view === 'kaabag' ? 'Kaabag · Peer talk' : 'iGabay Guide'}</b><small className="muted">{view === 'kaabag' ? 'Student Peer Facilitator' : 'Chatbot · choose with the buttons'}</small></div>
           </div>
           <div className="emerg">{EMERGENCY}</div>
-          <div className="msgs" ref={endRef} aria-live="polite">{items}</div>
-          {asked && (
+          <div className="msgs" ref={endRef} aria-live="polite">{view === 'kaabag' ? talkItems : items}</div>
+          {asked && view === 'kaabag' && (
             <div className="quick"><button className="opt" onClick={() => send('Yes')}>Yes</button><button className="opt" onClick={() => send('No')}>No</button></div>
           )}
           <form className="composer" onSubmit={(e) => { e.preventDefault(); send() }}>
-            <input aria-label="Message" placeholder={ongoing ? 'Aa' : 'Choose an option above to continue'} disabled={!ongoing} value={text} onChange={(e) => setText(e.target.value)} />
-            <button className="send" type="submit" aria-label="Send" disabled={!ongoing || !text.trim()}><Icon name="send" size={16} /></button>
+            <input aria-label="Message" placeholder={canType ? 'Aa' : view === 'kaabag' ? 'This conversation has ended' : 'Choose an option above to continue'} disabled={!canType} value={text} onChange={(e) => setText(e.target.value)} />
+            <button className="send" type="submit" aria-label="Send" disabled={!canType || !text.trim()}><Icon name="send" size={16} /></button>
           </form>
         </section>
       </div>
