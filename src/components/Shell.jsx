@@ -1,47 +1,42 @@
-import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useApp } from '../state'
 import { fullName } from '../utils'
-import { HOME, ROLE_LABEL } from '../roles'
+import { ROLE_TITLE } from '../roles'
+import Icon from './Icon'
 
+// [link, label, icon, other paths where the link stays selected]
 const NAV = {
-  student: [['/student', 'Dashboard'], ['/student/support', 'Get support'], ['/student/appointments', 'My Appointments'], ['/student/inbox', 'Gmail inbox'], ['/student/profile', 'My Profile']],
-  kaabag: [['/kaabag', 'Dashboard'], ['/kaabag/talks', 'Peer talks']],
-  counselor: [['/counselor', 'Dashboard'], ['/counselor/appointments', 'Appointments']],
-  associate: [['/associate', 'Dashboard'], ['/associate/accounts', 'Accounts'], ['/associate/availability', 'Counselor availability'], ['/associate/appointments', 'Appointments'], ['/associate/followups', 'Follow-up contacts'], ['/associate/reports', 'Analytics & reporting']],
+  student: [['/student', 'Home', 'home', []], ['/student/chat', 'Chat', 'chat', []], ['/student/appointments', 'My appointments', 'calendar', ['/student/appointments']]],
+  kaabag: [['/kaabag', 'Peer talks', 'chat', []]],
+  counselor: [['/counselor', 'My appointments', 'calendar', ['/counselor/']]],
+  associate: [
+    ['/associate', 'Appointments & requests', 'list', ['/associate/appointments']], ['/associate/accounts', 'Accounts', 'users', []],
+    ['/associate/availability', 'Counselor availability', 'clock', []], ['/associate/followups', 'Follow-up contact', 'phone', []], ['/associate/reports', 'Reports', 'chart', []],
+  ],
 }
 
-export default function Shell({ role, eyebrow, title, subtitle, children }) {
+// bare = full-height page without padding (used by the chat screens)
+export default function Shell({ role, bare, children }) {
   const { user, logout } = useApp()
-  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
   if (!user) return null // Protected (in App.jsx) already checks sign-in and role
+  const on = (to, extra) => pathname === to || extra.some((p) => pathname.startsWith(p))
   return (
-    <div className="shell">
-      <aside className={`side${open ? ' open' : ''}`}>
-        <div className="brand"><span className="logo" aria-hidden="true">i</span><span>iGabay</span></div>
-        <p className="org">MSU NAAWAN · OGCCS<br /><strong>{ROLE_LABEL[role]}</strong></p>
+    <div className="app">
+      <aside className="side">
+        <div className="brand">iGabay</div>
+        <p className="org">MSU Naawan<br />Office of Guidance, Counseling<br />and Career Services</p>
         <nav aria-label="Main">
-          {NAV[role].map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === HOME[role]} onClick={() => setOpen(false)}>{label}</NavLink>
+          {NAV[role].map(([to, label, icon, extra]) => (
+            <Link key={to} to={to} className={on(to, extra) ? 'active' : ''} aria-current={on(to, extra) ? 'page' : undefined}><Icon name={icon} />{label}</Link>
           ))}
         </nav>
-        <button className="link-btn signout" onClick={logout}>Sign out</button>
-        <p className="org small">Office of Student Welfare, Mindanao State University at Naawan</p>
+        <div className="side-foot">
+          <b>{fullName(user)}</b><span>{ROLE_TITLE[role]}</span>
+          <button className="signout" onClick={logout}><Icon name="out" size={16} />Sign out</button>
+        </div>
       </aside>
-      <div className="main">
-        <header className="top">
-          <button className="menu-btn" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(!open)}>☰</button>
-          <span className="tagline">Mental wellness screening &amp; referral support</span>
-          <span className="who">{fullName(user)}</span>
-        </header>
-        <main className="content">
-          {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-          <h1>{title}</h1>
-          {subtitle && <p className="lead">{subtitle}</p>}
-          {children}
-          <footer className="foot">OGCCS · Office of Student Welfare · MSU Naawan · Sample data only. Access personal information only for your authorized role.</footer>
-        </main>
-      </div>
+      <main className={`main${bare ? ' bare' : ''}`}>{children}</main>
     </div>
   )
 }

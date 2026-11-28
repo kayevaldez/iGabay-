@@ -1,64 +1,80 @@
 import { useState } from 'react'
-import Shell from '../../components/Shell'
-import { Field, Notice, EmptyState } from '../../components/ui'
 import { useApp } from '../../state'
-import { addDays, fmtShort, fmtTime, fullName, parseDate, toISO, todayISO } from '../../utils'
+import Shell from '../../components/Shell'
+import { Field, Modal, Notice } from '../../components/ui'
+import { TIMES } from '../../data/mock'
+import { addDays, fmtShort, fmtTime, fullName, parseDate } from '../../utils'
 
-// FR-29: add and change the counselor's available dates and times. The student calendar shows the change.
-const TIMES = ['10:00', '11:00', '14:00']
-const endOf = (t) => `${String(Number(t.slice(0, 2)) + 1).padStart(2, '0')}:00`
-function mondayOf(iso) { const d = parseDate(iso); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return toISO(d) }
+const noYear = (s) => fmtShort(s).replace(/, \d{4}$/, '')
+const WEEKS = Array.from({ length: 9 }, (_, i) => addDays('2026-11-02', i * 7)) // Mondays from Nov 2 to Dec 28
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 
+// Counselor availability (Figma A05 and Add time slot)
 export default function Availability() {
-  const { db, addSlot, toggleSlot } = useApp()
-  const counselors = db.users.filter((u) => u.role === 'counselor')
-  const [cid, setCid] = useState(counselors[0]?.id)
-  const [week, setWeek] = useState(() => mondayOf(todayISO()))
-  const [date, setDate] = useState('')
-  const [start, setStart] = useState('10:00')
-  const [end, setEnd] = useState('11:00')
+  const { db, addSlot, applySlotChanges } = useApp()
+  const counselors = db.users.filter((u) => u.role === 'counselor' && u.status === 'active')
+  const [week, setWeek] = useState('2026-12-07')
+  const [pending, setPending] = useState({})
+  const [adding, setAdding] = useState(false)
+  const [add, setAdd] = useState({ date: '2026-12-10', time: '16:00' })
   const [msg, setMsg] = useState(null)
-  const days = [0, 1, 2, 3, 4].map((n) => addDays(week, n))
-  const find = (d, t) => db.slots.find((s) => s.counselorId === Number(cid) && s.date === d && s.start === t)
-
-  function add(e) {
-    e.preventDefault()
-    if (!date) return setMsg({ kind: 'error', text: 'Choose a date.' })
-    if (date < todayISO()) return setMsg({ kind: 'error', text: 'Choose a date that is today or later.' })
-    if (end <= start) return setMsg({ kind: 'error', text: 'The end time must be after the start time.' })
-    const ok = addSlot(Number(cid), date, start, end)
-    setMsg(ok ? { kind: 'info', text: 'Open time added. The student calendar now shows it.' } : { kind: 'warn', text: 'That time already exists for this counselor.' })
+  const [addErr, setAddErr] = useState('')
+  const days = DAYS.map((_, i) => addDays(week, i))
+  const find = (date, start) => db.slots.find((s) => s.date === date && s.start === start)
+  const statusOf = (s) => pending[s.id] || s.status
+  const toggle = (s) => { if (s.status === 'booked') return; setMsg(null); setPending({ ...pending, [s.id]: statusOf(s) === 'open' ? 'unavailable' : 'open' }) }
+  const save = () => {
+    const changes = Object.fromEntries(Object.entries(pending).filter(([id, st]) => db.slots.find((s) => s.id === id).status !== st))
+    applySlotChanges(changes); setPending({}); setMsg('The changes are saved. Students see only the open slots.')
   }
-  if (!counselors.length) return <Shell role="associate" title="Counselor availability"><EmptyState title="No counselor accounts">Create a counselor account first.</EmptyState></Shell>
+  const doAdd = (e) => {
+    e.preventDefault()
+    const d = parseDate(add.date)
+    if (!add.date) { setAddErr('Choose a date.'); return }
+    if (d.getDay() === 0 || d.getDay() === 6) { setAddErr('Choose a day from Monday to Friday.'); return }
+    if (!addSlot(add.date, add.time)) { setAddErr('That time slot already exists.'); return }
+    setAdding(false); setAddErr(''); setMsg(`The time slot on ${fmtShort(add.date)} at ${fmtTime(add.time)} is added.`)
+  }
+  const dirty = Object.keys(pending).length > 0
   return (
-    <Shell role="associate" eyebrow="ASSOCIATE / AVAILABILITY" title="Counselor availability" subtitle="Enter counselor schedules. Students can book only open times.">
-      <div className="row">
-        <label htmlFor="co">Counselor</label>
-        <select id="co" value={cid} onChange={(e) => setCid(e.target.value)}>{counselors.map((c) => <option key={c.id} value={c.id}>{fullName(c)}</option>)}</select>
-        <button className="btn btn-ghost" onClick={() => setWeek(addDays(week, -7))}>‹ Previous week</button>
-        <strong>Week of {fmtShort(week)}</strong>
-        <button className="btn btn-ghost" onClick={() => setWeek(addDays(week, 7))}>Next week ›</button>
-      </div>
-      <div className="table-wrap"><table className="sched">
-        <thead><tr><th>Time</th>{days.map((d) => <th key={d}>{['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][days.indexOf(d)]} {fmtShort(d)}</th>)}</tr></thead>
-        <tbody>{TIMES.map((t) => <tr key={t}><th>{fmtTime(t)}</th>{days.map((d) => {
-          const s = find(d, t)
-          if (!s) return <td key={d} className="cell off">Unavailable</td>
-          if (s.status === 'booked') return <td key={d} className="cell booked">Booked</td>
-          return <td key={d} className={`cell ${s.status}`}><button className="link-btn" onClick={() => toggleSlot(s.id)} aria-label={`${s.status === 'open' ? 'Close' : 'Open'} ${fmtShort(d)} ${fmtTime(t)}`}>{s.status === 'open' ? 'Open' : 'Unavailable'}</button></td>
-        })}</tr>)}</tbody>
-      </table></div>
-      <small className="muted">Booked slots cannot be changed. Press Open or Unavailable to switch a slot.</small>
-      <form className="card" onSubmit={add} noValidate>
-        <h2>Add an open time</h2>
-        {msg && <Notice kind={msg.kind} title={msg.text} />}
-        <div className="grid cols-3">
-          <Field id="dt" label="Date"><input id="dt" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
-          <Field id="st" label="Start"><select id="st" value={start} onChange={(e) => { setStart(e.target.value); setEnd(endOf(e.target.value)) }}>{TIMES.map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select></Field>
-          <Field id="en" label="End"><input id="en" type="time" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+    <Shell role="associate">
+      <div className="page">
+        <div className="head">
+          <div><p className="eyebrow">Counselor availability</p><h1>Set open dates and times</h1><p className="lead">Students see only these open slots in the calendar.</p></div>
+          <div className="row"><button className="btn btn-outline" onClick={() => { setAddErr(''); setAdding(true) }}>+ Add time slot</button><button className="btn" onClick={save} disabled={!dirty}>Save changes</button></div>
         </div>
-        <button className="btn" type="submit">Save availability</button>
-      </form>
+        {msg && <Notice kind="ok">{msg}</Notice>}
+        <div className="grid2" style={{ maxWidth: 560 }}>
+          <Field id="counselor" label="Counselor"><select id="counselor" className="input">{counselors.map((c) => <option key={c.id}>{fullName(c)}</option>)}</select></Field>
+          <Field id="week" label="Week"><select id="week" className="input" value={week} onChange={(e) => { setWeek(e.target.value); setPending({}) }}>{WEEKS.map((w) => <option key={w} value={w}>{noYear(w)} – {fmtShort(addDays(w, 4))}</option>)}</select></Field>
+        </div>
+        <div className="week">
+          {days.map((date, i) => (
+            <div className="col" key={date}>
+              <h3>{DAYS[i]} {noYear(date)}</h3>
+              {TIMES.map((t) => {
+                const s = find(date, t)
+                if (!s) return <span key={t} className="slot off" aria-hidden="true">{fmtTime(t)}</span>
+                const st = statusOf(s)
+                return <button key={t} type="button" className={`slot${st === 'booked' ? ' booked' : st === 'unavailable' ? ' off' : ''}`} aria-pressed={st === 'open'} aria-disabled={st === 'booked'} onClick={() => toggle(s)}>{fmtTime(t)}</button>
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="legend"><span><i />Open</span><span><i className="l-book" />Booked</span><span><i className="l-off" />Unavailable</span><span>Tap an open or unavailable time to change it, then press Save changes.</span></div>
+      </div>
+      {adding && (
+        <Modal size="small" title="Add time slot" subtitle="The calendar will show this slot to students." onClose={() => setAdding(false)}
+          footer={<><button type="button" className="btn btn-outline" onClick={() => setAdding(false)}>Cancel</button><button type="submit" form="add-slot" className="btn">Add time slot</button></>}>
+          <form id="add-slot" className="stack" onSubmit={doAdd} noValidate>
+            <Field id="ac" label="Counselor"><select id="ac" className="input">{counselors.map((c) => <option key={c.id}>{fullName(c)}</option>)}</select></Field>
+            <div className="grid2">
+              <Field id="ad" label="Date" error={addErr}><input id="ad" className="input" type="date" min="2026-11-02" max="2026-12-31" value={add.date} onChange={(e) => setAdd({ ...add, date: e.target.value })} /></Field>
+              <Field id="at" label="Time"><select id="at" className="input" value={add.time} onChange={(e) => setAdd({ ...add, time: e.target.value })}>{TIMES.map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select></Field>
+            </div>
+          </form>
+        </Modal>
+      )}
     </Shell>
   )
 }
